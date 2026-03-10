@@ -28,10 +28,16 @@
 `weight` 规则（新版本）：
 
 - 数值越大优先级越高
-- 必须为“整数字符串”，例如：`"9999"`
+- 交付产物目标：整数字符串（例如：`"9999"`）
+- 输入层若出现 `int/bool`，应先归一化再发布（默认校验警告，严格模式可拦截）
 - 建议范围：`"1"` 到 `"9999"`
 - 默认值：`"9999"`
 - `0` / `"0"` 视为不可用（新版本已增加权重限制）
+
+`enable` 规则（2.56.1）：
+
+- 交付产物目标：整型 `1/0`
+- 输入层若出现 `"1"`/`true` 等多态，建议归一化为 `1/0`
 
 ## 1.1) StandarReader 2.56.1 编辑器兼容约束（新增）
 
@@ -58,6 +64,35 @@
 - `requestFilters` 统一为字符串形态
 - `validConfig` 统一降级为空字符串
 - 优先回避高风险结构组合（通过 A/B 变体定位后再放开）
+
+## 1.2) StandarReader 2.56.1 逆向真值补丁（2026-03）
+
+以下枚举来自 `lpnet_modelInfo` 反编译解包结果，作为 2.56.1 优先基线：
+
+- `responseFormatType` 合法值：
+  - `""`（普通字符串）
+  - `base64str`
+  - `html`
+  - `xml`
+  - `json`
+  - `data`
+- `responseDecryptType` 合法值：
+  - `""`（无需解密）
+  - `encryptType1`（自定义解密1）
+
+占位符（主程序字符串已实锤）：
+
+- `%@result`
+- `%@keyWord`
+- `%@pageIndex`
+- `%@offset`
+- `%@filter`
+
+Schema 分级策略（与脚本保持一致）：
+
+- 继续报错：缺少核心字段、禁用顶层字段、`java.getParams()`
+- 默认警告：`method:` / `data:` / `headers:`、`weight` 非字符串、`enable` 非整型
+- 严格模式：`check_xiangse_schema.py --strict-requestinfo` 会将 `method/data/headers` 升级为错误
 
 推荐最小骨架：
 
@@ -104,7 +139,8 @@
 
 - `host`
 - `validConfig`
-- `responseFormatType`（`html` / `json` / `xml`）
+- `responseFormatType`（`""` / `base64str` / `html` / `json` / `xml` / `data`）
+- `responseDecryptType`（`""` / `encryptType1`）
 - `requestInfo`
 - `list`
 - `bookName`
@@ -125,7 +161,8 @@
 
 编辑兼容补充（2.56.1）：
 
-- `weight` 只能是整数字符串，禁止数字类型（避免 `NSNumber length` 崩溃）
+- 发布目标建议：`weight` 为整数字符串；若输入为数字类型，先归一化
+- 发布目标建议：`enable` 为整型 `1/0`；若输入为字符串/布尔，先归一化
 - `requestFilters` 优先字符串形态（兼容优先于结构化数组）
 - `validConfig` 优先空字符串（若非必须，不使用 JSON 字符串）
 

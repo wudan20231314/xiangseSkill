@@ -93,11 +93,13 @@ def _run_xbsrebuild(action: str, input_path: Path, output_path: Path) -> None:
         raise RuntimeError(f"xbsrebuild command failed: {' '.join(cmd)}")
 
 
-def _run_schema_check(input_json: Path) -> None:
+def _run_schema_check(input_json: Path, *, strict_requestinfo: bool = False) -> None:
     checker = Path(__file__).resolve().parent / "check_xiangse_schema.py"
     if not checker.exists():
         raise FileNotFoundError(f"schema checker not found: {checker}")
     cmd = [sys.executable, str(checker), str(input_json)]
+    if strict_requestinfo:
+        cmd.append("--strict-requestinfo")
     completed = subprocess.run(cmd)
     if completed.returncode != 0:
         raise RuntimeError(
@@ -122,7 +124,7 @@ def _run_editor_check(input_json: Path, *, strict: bool) -> None:
 def _command_json2xbs(args: argparse.Namespace) -> None:
     input_json = Path(args.input).resolve()
     if not args.skip_schema_check:
-        _run_schema_check(input_json)
+        _run_schema_check(input_json, strict_requestinfo=args.strict_requestinfo)
     _run_xbsrebuild("json2xbs", input_json, Path(args.output).resolve())
     print(f"OK: {Path(args.output).resolve()}")
 
@@ -139,7 +141,7 @@ def _command_roundtrip(args: argparse.Namespace) -> None:
     roundtrip_json = prefix.with_suffix(".roundtrip.json")
 
     if not args.skip_schema_check:
-        _run_schema_check(input_json)
+        _run_schema_check(input_json, strict_requestinfo=args.strict_requestinfo)
 
     _run_xbsrebuild("json2xbs", input_json, xbs_path)
     _run_xbsrebuild("xbs2json", xbs_path, roundtrip_json)
@@ -356,6 +358,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Skip xiangse schema guard before conversion",
     )
+    p1.add_argument(
+        "--strict-requestinfo",
+        action="store_true",
+        help="Treat method:/data:/headers: in requestInfo as schema errors.",
+    )
     p1.set_defaults(func=_command_json2xbs)
 
     p2 = sub.add_parser("xbs2json", help="Convert XBS to JSON")
@@ -370,6 +377,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--skip-schema-check",
         action="store_true",
         help="Skip xiangse schema guard before conversion",
+    )
+    p3.add_argument(
+        "--strict-requestinfo",
+        action="store_true",
+        help="Treat method:/data:/headers: in requestInfo as schema errors.",
     )
     p3.set_defaults(func=_command_roundtrip)
 

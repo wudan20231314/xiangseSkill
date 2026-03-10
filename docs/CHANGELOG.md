@@ -1,6 +1,21 @@
 # Changelog
 
 ## 2026-03-10
+- 并入 StandarReader 2.56.1 逆向基线（文档 + 校验器 + 转换入口）：
+  - 新增 `docs/REVERSE_BASELINE_2561.md`（SDK/tools、Hook 点、可疑 URL、规则对照矩阵、证据编号）
+  - `XBS_JSON_CODING_RULES` 补齐真值枚举：
+    - `responseFormatType`: `""/base64str/html/xml/json/data`
+    - `responseDecryptType`: `""/encryptType1`
+  - `weight/enable` 从硬拒绝调整为“归一化建议 + 风险提示”语义
+- `check_xiangse_schema.py` 引入分级校验：
+  - 继续报错：缺失核心字段、禁用顶层字段、`java.getParams()`
+  - 默认警告：`method:/data:/headers:`、`weight` 非字符串、`enable` 非整型
+  - 新增枚举报错：`responseFormatType`、`responseDecryptType` 不在白名单
+  - 新增 `--strict-requestinfo` 开关（将 `method/data/headers` 升级为错误）
+  - 输出末尾新增 `ERROR_COUNT/WARNING_COUNT/SOURCE_COUNT`
+- `xbs_tool.py` 透传 strict 策略：
+  - `json2xbs` / `roundtrip` 新增 `--strict-requestinfo`
+  - `_run_schema_check` 支持 strict 透传，默认行为保持兼容
 - 修复 2.56.1 保存闪退高风险字段：
   - `weight` 统一改为整数字符串（默认 `"9999"`）
   - `check-editor` 新增高风险规则：`WEIGHT_NON_STRING`
