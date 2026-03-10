@@ -28,8 +28,36 @@
 `weight` 规则（新版本）：
 
 - 数值越大优先级越高
-- 建议范围：`1` 到 `9999`
-- `0` 视为不可用（新版本已增加权重限制）
+- 必须为“整数字符串”，例如：`"9999"`
+- 建议范围：`"1"` 到 `"9999"`
+- 默认值：`"9999"`
+- `0` / `"0"` 视为不可用（新版本已增加权重限制）
+
+## 1.1) StandarReader 2.56.1 编辑器兼容约束（新增）
+
+背景：存在“导入可用，但编辑页点击保存闪退”的客户端问题。  
+结论：必须把“编辑保存稳定性”作为独立验收项，不可仅看抓取链路可用。
+日志指纹（已实锤）：`-[__NSCFNumber length]`，对应字段类型错配；本轮定位到 `weight(number)` 是高概率主因。
+
+强制验收：
+
+- 不改任何字段直接保存，不闪退
+- 修改 `sourceName/bookSourceName` 1 个字符后保存，不闪退
+- 修改 1 个规则字段（XPath 或 `requestInfo`）后保存，不闪退
+
+建议流程：
+
+- 常规规则先跑 schema 检查：`check_xiangse_schema.py`
+- 再跑编辑兼容检查：`check_editor_compat.py` 或 `xbs_tool.py check-editor`
+- 若命中高风险项，先产出 `editor_safe` 版本再交付
+
+`editor_safe`（默认面向 2.56.1）约束：
+
+- `weight` 必须为整数字符串（默认 `"9999"`）
+- 保留 `bookWorld` 分类能力
+- `requestFilters` 统一为字符串形态
+- `validConfig` 统一降级为空字符串
+- 优先回避高风险结构组合（通过 A/B 变体定位后再放开）
 
 推荐最小骨架：
 
@@ -40,7 +68,7 @@
     "sourceUrl": "https://example.com",
     "sourceType": "text",
     "enable": 1,
-    "weight": 100,
+    "weight": "9999",
     "miniAppVersion": "1.0.0",
     "lastModifyTime": "1772463417",
     "searchBook": { "actionID": "searchBook", "parserID": "DOM" },
@@ -94,6 +122,12 @@
 - `httpHeaders`
 - `moreKeys`
 - `nextPageUrl`
+
+编辑兼容补充（2.56.1）：
+
+- `weight` 只能是整数字符串，禁止数字类型（避免 `NSNumber length` 崩溃）
+- `requestFilters` 优先字符串形态（兼容优先于结构化数组）
+- `validConfig` 优先空字符串（若非必须，不使用 JSON 字符串）
 
 ## 3) 请求构建规则（`requestInfo`）
 
@@ -692,10 +726,10 @@ _cat
 
 - 避免省略导致兼容分支走错
 
-3. `weight` 使用 `1..9999`
+3. `weight` 使用整数字符串 `"1"`..`"9999"`
 
-- 推荐默认值：`100`
-- 想强制高优先级可用 `9999`
+- 推荐默认值：`"9999"`
+- 需要调低优先级时再使用较小字符串数值
 
 4. `actionID`、`parserID` 任何动作都必须有
 
@@ -729,7 +763,7 @@ _cat
   "sourceUrl": "https://example.com",
   "sourceType": "text",
   "enable": 1,
-  "weight": 100,
+  "weight": "9999",
   "miniAppVersion": "1.0.0",
   "lastModifyTime": "1772463417",
   "httpHeaders": {

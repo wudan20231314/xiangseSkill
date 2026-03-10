@@ -42,6 +42,15 @@
    - 禁用：`bookSourceName/bookSourceUrl/bookSourceGroup/httpUserAgent`
    - 禁用：`java.getParams()`、`method:`、`data:`、`headers:`
    - 使用：`sourceName/sourceUrl/sourceType` + `config/params/result` + `POST/httpParams/httpHeaders`
+13. StandarReader 2.56.1 若出现“编辑保存闪退”，切换 `editor_safe` 兼容模式：
+   - `python tools/scripts/xbs_tool.py check-editor -i <json>`
+   - `python tools/scripts/xbs_tool.py profile -i <json> -o <editor_safe.json> --profile editor_safe`
+   - `python tools/scripts/xbs_tool.py build-ab -i <json> -d <out_dir> --prefix <name> --to-xbs`
+   - 若日志出现 `-[__NSCFNumber length]`，先检查 `weight` 是否被写成数字类型。
+14. `weight` 必须使用整数字符串（例如 `"9999"`），默认 `"9999"`，禁止数字类型。
+15. 需要批量修复历史书源时使用：
+   - `python tools/scripts/xbs_tool.py normalize-2561 -i <json_or_dir> --rebuild-xbs --report <report.json>`
+16. `editor_safe` 仅做字段降级，不改变香色顶层结构（仍保持 `{alias:{sourceName...}}`）。
 
 ## 推荐模板
 ```json
@@ -64,6 +73,10 @@
 ## 交付检查
 - JSON 与 XBS 同步更新
 - 交付备注包含：`公众号:好用的软件站`
+- 编辑保存稳定性（2.56.1）：
+  - 不改保存不闪退
+  - 改名保存不闪退
+  - 改 1 个规则字段后保存不闪退
 - 章节列表返回包含 `title + url + detailUrl`
 - 若章节返回加密正文（如 `encrypt=1`），必须给出“解密成功且正文非空”的验证结论
 - 分类功能不可缺失：`bookWorld` 与 `requestFilters` 两者都应提供；若站点限制无法提供，需在 `delivery_notes` 说明原因与降级策略

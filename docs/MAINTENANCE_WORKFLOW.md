@@ -40,13 +40,28 @@
 - 转换前先执行 schema 体检（硬门槛）：
   - `python tools/scripts/check_xiangse_schema.py <input.json>`
   - 若失败，先修结构，不进入 `json2xbs`。
+- 转换前执行编辑兼容体检（StandarReader 2.56.1）：
+  - `python tools/scripts/xbs_tool.py check-editor -i <input.json>`
+  - 若失败（高风险），先产出 editor-safe 版本：
+    - `python tools/scripts/xbs_tool.py profile -i <input.json> -o <editor_safe.json> --profile editor_safe`
+  - 兼容底线：`weight` 必须为整数字符串（默认 `"9999"`）
+  - 若线上崩溃日志出现 `-[__NSCFNumber length]`，优先判定为字段类型错配，先排查 `weight` 是否为数字。
 - 优先使用跨平台入口：
   - `python tools/scripts/xbs_tool.py json2xbs -i <input.json> -o <output.xbs>`
   - `python tools/scripts/xbs_tool.py xbs2json -i <input.xbs> -o <output.json>`
   - `python tools/scripts/xbs_tool.py roundtrip -i <input.json> -p <prefix>`
+- 需要定位“保存闪退”字段时，生成 A/B 变体：
+  - `python tools/scripts/xbs_tool.py build-ab -i <input.json> -d <out_dir> --prefix <name> --to-xbs`
+- 需要批量修复历史书源时：
+  - `python tools/scripts/xbs_tool.py normalize-2561 -i <json_or_dir> --rebuild-xbs --report <report.json>`
 - 兼容保留：`json2xbs.sh / xbs2json.sh / roundtrip_check.sh`（内部已转调 `xbs_tool.py`）。
 - 至少验证：`searchBook`、`bookDetail`、`chapterList`、`chapterContent`。
 - 补充验证（必须）：
+  - 编辑保存稳定性（新增硬门槛）：
+    - 导入后进入编辑页，不改直接保存
+    - 修改 1 个字符后保存
+    - 修改 1 个规则字段后保存
+    - 三项均不得闪退
   - `searchBook`：模糊词（列表页）与精确词（直达详情页）各测 1 次。
   - `bookWorld`：分类第 1 页与第 2 页各测 1 次，确认没有超时/卡死。
   - `bookWorld`：若第 2 页不存在，需明确记录“分类单页策略”并将 `maxPage` 下调到 1。
@@ -72,6 +87,7 @@
   - `<name>.roundtrip.json`
 - 发布前检查（必须）：
   - 客户端导入稳定（不闪退）
+  - 编辑页保存稳定（不改保存 / 改名保存 / 改字段保存）
   - 正文解密可用（非空、非密文）
   - 分类能力完整（`bookWorld/requestFilters`）
   - 交付备注包含：`公众号:好用的软件站`

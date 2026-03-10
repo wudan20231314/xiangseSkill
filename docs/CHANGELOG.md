@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-03-10
+- 修复 2.56.1 保存闪退高风险字段：
+  - `weight` 统一改为整数字符串（默认 `"9999"`）
+  - `check-editor` 新增高风险规则：`WEIGHT_NON_STRING`
+- `xbs_tool.py` 新增批量迁移命令：
+  - `normalize-2561`（递归识别书源、无损转换 `weight`、可选自动重建同名 `.xbs`、输出报告）
+  - 识别逻辑已收敛为“强匹配书源结构”，避免误改普通 JSON
+- 已执行一次全工作区迁移与重建：
+  - 扫描 `826` 个 JSON，修复 `118` 个、重建 `118` 个 XBS、失败 `0`
+  - 发现并回滚误命中非书源 JSON `10` 个（最终二次迁移 `CHANGED=0 / FAILED=0`）
+- 实机回归（80zw）：
+  - `weight(number) -> weight(string)` 后，导入与编辑保存恢复正常（不改保存可通过）。
+- 新增 StandarReader 2.56.1 编辑保存兼容工具链：
+  - `tools/scripts/check_editor_compat.py`（编辑保存风险检查）
+  - `tools/scripts/build_editor_ab_variants.py`（A0/A1/A2/A3 对照包生成）
+  - `tools/scripts/editor_compat.py`（editor-safe 变换与风险规则）
+- `xbs_tool.py` 新增子命令：
+  - `check-editor`：执行编辑兼容检查
+  - `profile --profile editor_safe`：生成编辑器兼容书源（可选直接导出 XBS）
+  - `build-ab`：一键生成 A/B JSON 与 XBS
+- 生成 `gudaibook1` 保存闪退定位包：
+  - `gudaibook1_editor_ab_v0308_A0~A3.(json/xbs)`
+  - `gudaibook1_editor_safe_v0308.(json/xbs)`
+- 更新规范与流程：
+  - `xbs-booksource-workflow.SKILL`：新增“保存回归门槛”与 editor-safe/A-B 命令
+  - `xiangse-booksource.SKILL`：新增 editor-safe 兼容例外与保存回归要求
+  - `XBS_JSON_CODING_RULES`：新增 2.56.1 编辑器兼容约束
+  - `MAINTENANCE_WORKFLOW`：发布前新增“不改保存/改名保存/改字段保存”硬门槛
+
 ## 2026-03-08
 - 新增 `17k` 实战规范沉淀（skill + 文档）：
   - 闪退防护：禁止把超长混淆 WAF JS 直接作为主链路。

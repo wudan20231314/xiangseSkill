@@ -10,6 +10,33 @@
 - 影响范围：
 - 待办：
 
+## 2026-03-10 / StandarReader 2.56.1 编辑保存闪退
+- 问题现象：
+  - 书源可导入、可用，但进入编辑页点击保存（不改/改名/改规则）会闪退。
+  - 三次崩溃日志同指纹：`StandarReader + 925860`，并出现 `-[__NSCFNumber length]`。
+- 根因：
+  - 客户端保存路径对某字段按字符串调用 `length`，实际收到 `NSNumber`。
+  - 对照可编辑书源（`sourceModelList.xbs` 回转）后，最强差异字段为 `weight`：
+    - 对照可保存样本：`weight` 为字符串
+    - 我们历史生成：`weight` 为数字
+- 修复策略：
+  - 兼容契约强制：`weight` 统一为整数字符串，默认 `"9999"`。
+  - 增加编辑兼容检查：`WEIGHT_NON_STRING` 作为高风险阻断。
+  - 增加批量迁移：目录递归把数字 `weight` 无损改为字符串，并可自动重建同名 `.xbs`。
+  - 发布门槛新增“编辑保存三连测”：不改保存 / 改名保存 / 改字段保存。
+- 最终规则沉淀：
+  - “导入可用”不等于“编辑可保存”，必须拆成两级验收。
+  - 2.56.1 兼容优先级最高：`weight` 必须是字符串；`enable` 保持整型。
+  - 出现 `-[__NSCFNumber length]` 时，优先检查字段类型，首查 `weight`。
+- 影响范围：
+  - `tools/scripts/editor_compat.py`
+  - `tools/scripts/check_editor_compat.py`
+  - `tools/scripts/xbs_tool.py`
+  - `xbs-booksource-workflow.SKILL`、`xiangse-booksource.SKILL`
+  - `XBS_JSON_CODING_RULES`、`MAINTENANCE_WORKFLOW`、`CHANGELOG`
+- 待办：
+  - 后续若出现反例，再扩展“编辑器字段白名单”并加入自动修复建议。
+
 ## 2026-03-08 / 17k
 - 问题现象：
   - 导入后客户端闪退，稳定性差。

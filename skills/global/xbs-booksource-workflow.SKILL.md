@@ -28,6 +28,12 @@ Implement or fix text book sources for 香色闺阁-compatible formats with a de
 - Hard gate before conversion (must pass):
   - `python tools/scripts/check_xiangse_schema.py <source.json>`
   - If this fails, do NOT convert to XBS first; fix schema first.
+- StandarReader 2.56.1 编辑兼容门槛（新增）：
+  - `python tools/scripts/xbs_tool.py check-editor -i <source.json>`
+  - 若触发高风险项（如新 schema wrapper、`requestFilters` 非字符串），先产出 `editor_safe` 再测：
+    - `python tools/scripts/xbs_tool.py profile -i <input.json> -o <editor_safe.json> --profile editor_safe`
+  - 需要批量修复历史书源时：
+    - `python tools/scripts/xbs_tool.py normalize-2561 -i <json_or_dir> --rebuild-xbs --report <report.json>`
 
 ## Step 2: Build or Repair JSON Rules
 
@@ -63,7 +69,7 @@ Prefer:
 
 - `parserID: DOM`
 - `requestInfo: @js:` (avoid legacy JS callback fields unless required)
-- `weight` must be in `1..9999` (new app versions treat `0` as unavailable)
+- `weight` must be integer-like string in `\"1\"..\"9999\"` (default `\"9999\"`)
 - Priority semantics: larger `weight` means higher source priority
 - If using template `requestInfo`, support placeholders: `%@result`, `%@keyWord`, `%@pageIndex`, `%@offset`, `%@filter`
 - For chapter pagination requests, prioritize:
@@ -205,6 +211,21 @@ Prefer:
   - `sourceName` 仅保留“站点名 + 版本”语义。
   - `delivery_notes` 必须包含：`公众号:好用的软件站`。
 
+实战补充（2026-03，StandarReader 2.56.1 编辑保存闪退）:
+
+- 若崩溃日志出现 `-[__NSCFNumber length]`，先检查 `weight` 类型：
+  - 必须是整数字符串（如 `"9999"`），不能是数字类型。
+- 导入可用不等于可编辑可保存，必须单独做“保存回归”：
+  - 进入编辑页后“不改直接保存”
+  - 修改 1 个字符后保存
+  - 修改 1 个规则字段后保存
+- 若保存闪退，按 A/B 变体定位字段簇（A0/A1/A2/A3）：
+  - `python tools/scripts/xbs_tool.py build-ab -i <input.json> -d <out_dir> --prefix <name> --to-xbs`
+- `editor_safe` profile 目标：
+  - 保留 `bookWorld` 分类能力
+  - 将 `requestFilters` 统一为字符串
+  - 降级高风险结构（如 `validConfig` JSON 字符串、顶层复杂对象字段）
+
 ## Step 3: Selector Validation (Critical)
 
 Validate selectors against saved HTML (e.g., `xmllint --html --xpath ...`).
@@ -241,6 +262,10 @@ Preferred (cross-platform, including Windows/Termux):
 - `python tools/scripts/xbs_tool.py json2xbs -i <input.json> -o <output.xbs>`
 - `python tools/scripts/xbs_tool.py xbs2json -i <input.xbs> -o <output.json>`
 - `python tools/scripts/xbs_tool.py roundtrip -i <input.json> -p <output_prefix>`
+- `python tools/scripts/xbs_tool.py check-editor -i <input.json>`
+- `python tools/scripts/xbs_tool.py profile -i <input.json> -o <editor_safe.json> --profile editor_safe`
+- `python tools/scripts/xbs_tool.py build-ab -i <input.json> -d <out_dir> --prefix <name> --to-xbs`
+- `python tools/scripts/xbs_tool.py normalize-2561 -i <json_or_dir> --rebuild-xbs --report <report.json>`
 - Note: `json2xbs/roundtrip` auto-run schema guard; conversion aborts on schema mismatch.
 - If absolutely needed, bypass with `--skip-schema-check` (not recommended for delivery artifacts).
 
@@ -258,6 +283,7 @@ When delivering results, always provide:
 - absolute path to JSON
 - absolute path to XBS
 - SHA256 of XBS
+- 保存回归结论（不改保存 / 改名保存 / 改字段保存）
 - brief debug note if any compatibility workaround was applied
 - schema check result (`PASS/FAIL`) and command used.
 
@@ -266,7 +292,7 @@ When delivering results, always provide:
 Do:
 
 - Keep `enable` as numeric `1/0`.
-- Keep `weight` in `1..9999` (recommend `100`, use `9999` for highest priority).
+- Keep `weight` as string integer (recommend `\"9999\"` for highest priority).
 - Set `lastModifyTime` as Unix seconds string (not date text), e.g. `"1772463417"`.
 - Keep rules minimal and testable.
 - Verify with at least one real query and one real chapter.
