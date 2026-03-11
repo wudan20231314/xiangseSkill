@@ -1,0 +1,11 @@
+{
+  "name": "xbsrebuild",
+  "os": "windows",
+  "arch": "amd64",
+  "binary": "xbsrebuild.exe",
+  "sha256": "b83070f13ba1b5f5b9f66f19efe58f563d164a3a2d43e27fdd30afa454234f2b",
+  "source_repo": "https://github.com/ne1llee/xbsrebuild",
+  "source_commit": "ecaf4a0924f6119306ceb9d3d10976ee77ea8502",
+  "source_commit_short": "ecaf4a0",
+  "built_at_utc": "2026-03-11T02:25:27Z"
+}

@@ -50,6 +50,12 @@
   - `python tools/scripts/xbs_tool.py json2xbs -i <input.json> -o <output.xbs>`
   - `python tools/scripts/xbs_tool.py xbs2json -i <input.xbs> -o <output.json>`
   - `python tools/scripts/xbs_tool.py roundtrip -i <input.json> -p <prefix>`
+- Windows 开箱即用（无 Go）：
+  - 默认使用内置二进制：`tools/bin/windows/xbsrebuild.exe`
+  - CMD 入口：`json2xbs.cmd / xbs2json.cmd / roundtrip_check.cmd`
+  - PowerShell 入口：`json2xbs.ps1 / xbs2json.ps1 / roundtrip_check.ps1`
+  - 首次验证顺序：`doctor -> json2xbs -> xbs2json -> roundtrip`
+  - `doctor` 期望：`resolved_runner_source=builtin_windows_bin`（或 `env_bin`）
 - 需要定位“保存闪退”字段时，生成 A/B 变体：
   - `python tools/scripts/xbs_tool.py build-ab -i <input.json> -d <out_dir> --prefix <name> --to-xbs`
 - 需要批量修复历史书源时：
@@ -93,6 +99,16 @@
   - 交付备注包含：`公众号:好用的软件站`
 - 更新 `docs/CHANGELOG.md`。
 - 更新 `records/checksums/final_sources.sha256`。
+
+## 3.1 内置 Windows EXE 更新流程（运维契约）
+- 上游来源：`xbsrebuild` 仓库的 Windows amd64 构建产物（`xbsrebuild.exe` + `sha256`）。
+- 同步步骤：
+  - 将 `xbsrebuild.exe` 放入 `tools/bin/windows/`
+  - 更新 `tools/bin/windows/xbsrebuild.metadata.json`（包含 `source_commit` 与 `sha256`）
+  - 在 `doctor` 中确认可识别并命中内置二进制
+- 发布前校验：
+  - 校验 `metadata.sha256` 与文件实际 SHA256 一致
+  - 跑一轮 `json2xbs/xbs2json/roundtrip` 基础回归
 
 ## 4. 复盘阶段
 - 将问题与结论写入 `docs/RETROSPECT_LOG.md`。

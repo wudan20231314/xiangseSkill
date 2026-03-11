@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -35,21 +36,35 @@ def _default_xbsrebuild_root(repo_root: Path) -> Path | None:
     return None
 
 
-def _resolve_runner(repo_root: Path) -> tuple[list[str], Path | None]:
+def _is_windows() -> bool:
+    return os.name == "nt" or platform.system().lower().startswith("win")
+
+
+def _builtin_windows_bin(repo_root: Path) -> Path:
+    return repo_root / "tools" / "bin" / "windows" / "xbsrebuild.exe"
+
+
+def _resolve_runner(repo_root: Path) -> tuple[list[str], Path | None, str]:
     # 1) explicit binary path from env
     env_bin = os.environ.get("XBSREBUILD_BIN", "").strip()
     if env_bin:
         bin_path = Path(env_bin).expanduser().resolve()
         if not bin_path.exists():
             raise FileNotFoundError(f"XBSREBUILD_BIN not found: {bin_path}")
-        return [str(bin_path)], None
+        return [str(bin_path)], None, "env_bin"
 
-    # 2) xbsrebuild in PATH
+    # 2) built-in windows binary
+    if _is_windows():
+        builtin_bin = _builtin_windows_bin(repo_root)
+        if builtin_bin.exists():
+            return [str(builtin_bin)], None, "builtin_windows_bin"
+
+    # 3) xbsrebuild in PATH
     path_bin = shutil.which("xbsrebuild")
     if path_bin:
-        return [path_bin], None
+        return [path_bin], None, "path_bin"
 
-    # 3) go run fallback
+    # 4) go run fallback
     xbsrebuild_root = os.environ.get("XBSREBUILD_ROOT", "").strip()
     if xbsrebuild_root:
         root = Path(xbsrebuild_root).expanduser().resolve()
@@ -58,22 +73,23 @@ def _resolve_runner(repo_root: Path) -> tuple[list[str], Path | None]:
 
     if not root or not root.exists():
         raise FileNotFoundError(
-            "Cannot find xbsrebuild. Set XBSREBUILD_BIN or XBSREBUILD_ROOT, or install xbsrebuild in PATH."
+            "Cannot find xbsrebuild. Set XBSREBUILD_BIN, place built-in tools/bin/windows/xbsrebuild.exe (Windows), "
+            "or set XBSREBUILD_ROOT / install xbsrebuild in PATH."
         )
 
     if not shutil.which("go"):
         raise RuntimeError(
-            "go command not found. Install Go or set XBSREBUILD_BIN to a prebuilt xbsrebuild executable."
+            "go command not found. Install Go or set XBSREBUILD_BIN / built-in xbsrebuild.exe."
         )
 
-    return ["go", "run", "."], root
+    return ["go", "run", "."], root, "go_run_root"
 
 
 def _run_xbsrebuild(action: str, input_path: Path, output_path: Path) -> None:
     repo_root = _repo_root()
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    cmd_prefix, cwd = _resolve_runner(repo_root)
+    cmd_prefix, cwd, _ = _resolve_runner(repo_root)
     cmd = cmd_prefix + [action, "-i", str(input_path), "-o", str(output_path)]
 
     env = os.environ.copy()
@@ -153,14 +169,30 @@ def _command_roundtrip(args: argparse.Namespace) -> None:
 
 def _command_doctor(_: argparse.Namespace) -> None:
     repo_root = _repo_root()
+    builtin_bin = _builtin_windows_bin(repo_root)
+    builtin_meta = repo_root / "tools" / "bin" / "windows" / "xbsrebuild.metadata.json"
     print(f"repo_root: {repo_root}")
     print(f"python: {sys.executable}")
+    print(f"platform: {platform.platform()}")
+    print(f"is_windows: {_is_windows()}")
     print(f"go_in_path: {shutil.which('go') or ''}")
     print(f"xbsrebuild_in_path: {shutil.which('xbsrebuild') or ''}")
     print(f"XBSREBUILD_BIN: {os.environ.get('XBSREBUILD_BIN', '')}")
     print(f"XBSREBUILD_ROOT: {os.environ.get('XBSREBUILD_ROOT', '')}")
+    print(f"builtin_windows_bin: {builtin_bin}")
+    print(f"builtin_windows_bin_exists: {builtin_bin.exists()}")
+    print(f"builtin_windows_metadata: {builtin_meta}")
+    print(f"builtin_windows_metadata_exists: {builtin_meta.exists()}")
+    if builtin_meta.exists():
+        try:
+            data = json.loads(builtin_meta.read_text(encoding="utf-8"))
+            print(f"builtin_windows_metadata_commit: {data.get('source_commit_short') or data.get('source_commit') or ''}")
+            print(f"builtin_windows_metadata_sha256: {data.get('sha256') or ''}")
+        except Exception as exc:
+            print(f"builtin_windows_metadata_error: {exc}")
     try:
-        cmd, cwd = _resolve_runner(repo_root)
+        cmd, cwd, source = _resolve_runner(repo_root)
+        print(f"resolved_runner_source: {source}")
         print(f"resolved_runner: {' '.join(cmd)}")
         print(f"resolved_cwd: {cwd or ''}")
     except Exception as exc:

@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-03-11
+- Windows 开箱即用转换能力落地（无需 Go）：
+  - 新增内置二进制：`tools/bin/windows/xbsrebuild.exe`（amd64）
+  - 新增元数据：`tools/bin/windows/xbsrebuild.metadata.json`（`source_commit` + `sha256`）
+  - `xbs_tool.py` runner 优先级更新：
+    1) `XBSREBUILD_BIN`
+    2) 内置 `tools/bin/windows/xbsrebuild.exe`
+    3) PATH
+    4) `XBSREBUILD_ROOT` + `go run`
+  - `doctor` 新增内置二进制探测与命中来源输出
+  - Windows 入口补齐：`.cmd` 增强 + 新增 `.ps1`（json2xbs/xbs2json/roundtrip）
+- 新增导入闪退根因沉淀（StandarReader 2.56.1 / Mac Catalyst）：
+  - 崩溃指纹：`NSInvalidArgumentException` + `-[__NSArrayI allKeys]`
+  - 根因：`bookWorld.categories` 使用数组形态，客户端按字典读取导致崩溃
+  - 规则修订：香色导入产物禁用 `bookWorld.categories` 数组，统一改为 `bookWorld.{分类名}` map 结构
+- `XBS_JSON_CODING_RULES` 同步更新：
+  - 1.1 增加导入闪退补充说明
+  - 4.5 增加 `bookWorld` 结构硬约束
+  - 4.12 增加 `-[__NSArrayI allKeys]` 快速排障项
+
 ## 2026-03-10
 - 并入 StandarReader 2.56.1 逆向基线（文档 + 校验器 + 转换入口）：
   - 新增 `docs/REVERSE_BASELINE_2561.md`（SDK/tools、Hook 点、可疑 URL、规则对照矩阵、证据编号）

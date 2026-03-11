@@ -34,6 +34,10 @@
    - `python tools/scripts/xbs_tool.py xbs2json -i <xbs> -o <json>`
    - `python tools/scripts/xbs_tool.py roundtrip -i <json> -p <prefix>`
    - 仅在用户明确是 macOS/Linux/bash 时，再给 `.sh` 版本命令。
+   - Windows 默认无需 Go：优先使用仓库内置 `tools/bin/windows/xbsrebuild.exe`。
+   - Windows 可选入口：
+     - CMD：`json2xbs.cmd / xbs2json.cmd / roundtrip_check.cmd`
+     - PowerShell：`json2xbs.ps1 / xbs2json.ps1 / roundtrip_check.ps1`
 11. 转换前必须先过 schema 体检（硬门槛）：
    - `python tools/scripts/check_xiangse_schema.py <json>`
    - 若失败，先修 JSON 结构，再做 json2xbs。
@@ -81,6 +85,9 @@
 - 若章节返回加密正文（如 `encrypt=1`），必须给出“解密成功且正文非空”的验证结论
 - 分类功能不可缺失：`bookWorld` 与 `requestFilters` 两者都应提供；若站点限制无法提供，需在 `delivery_notes` 说明原因与降级策略
 - 对 Windows/Termux 用户补充可直接运行命令，不要求用户手改脚本路径。
+- Windows 首次排障先执行：
+  - `python tools/scripts/xbs_tool.py doctor`
+  - 需看到 `resolved_runner_source: builtin_windows_bin`（或显式 `XBSREBUILD_BIN`）。
 
 ## 弱模型（Tare）执行模式
 1. 强制引用：`docs/TARE_USAGE_PLAYBOOK.md`

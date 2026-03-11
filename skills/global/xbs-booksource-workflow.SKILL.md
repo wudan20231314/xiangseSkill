@@ -226,6 +226,19 @@ Prefer:
   - 将 `requestFilters` 统一为字符串
   - 降级高风险结构（如 `validConfig` JSON 字符串、顶层复杂对象字段）
 
+实战补充（2026-03，StandarReader 2.56.1 导入即闪退）:
+
+- 若崩溃日志出现：
+  - `NSInvalidArgumentException`
+  - `-[__NSArrayI allKeys]`
+  说明客户端把数组按字典读取。
+- 已确认高风险触发点：`bookWorld.categories` 数组形态。
+- 导入产物硬约束：
+  - `bookWorld` 使用分类 map（`bookWorld.{分类名}`），禁用 `bookWorld.categories` 数组。
+  - `enable` 统一输出 `1/0`。
+  - `responseFormatType` 统一小写（`html/json/xml/text`）。
+  - `requestInfo` 对象转为字符串模板或 `@js:return {...};`。
+
 ## Step 3: Selector Validation (Critical)
 
 Validate selectors against saved HTML (e.g., `xmllint --html --xpath ...`).
@@ -268,6 +281,13 @@ Preferred (cross-platform, including Windows/Termux):
 - `python tools/scripts/xbs_tool.py normalize-2561 -i <json_or_dir> --rebuild-xbs --report <report.json>`
 - Note: `json2xbs/roundtrip` auto-run schema guard; conversion aborts on schema mismatch.
 - If absolutely needed, bypass with `--skip-schema-check` (not recommended for delivery artifacts).
+- Windows 开箱即用约束（新增）：
+  - 默认 runner 优先级：`XBSREBUILD_BIN` > 内置 `tools/bin/windows/xbsrebuild.exe` > PATH > `XBSREBUILD_ROOT` + `go run`
+  - Windows 默认无需 Go（内置 EXE 可直接转换）
+  - 可选入口：
+    - CMD：`json2xbs.cmd / xbs2json.cmd / roundtrip_check.cmd`
+    - PowerShell：`json2xbs.ps1 / xbs2json.ps1 / roundtrip_check.ps1`
+  - 首次排障先跑：`python tools/scripts/xbs_tool.py doctor`
 
 Fallback:
 
