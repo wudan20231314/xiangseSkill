@@ -45,6 +45,13 @@
 结论：必须把“编辑保存稳定性”作为独立验收项，不可仅看抓取链路可用。
 日志指纹（已实锤）：`-[__NSCFNumber length]`，对应字段类型错配；本轮定位到 `weight(number)` 是高概率主因。
 
+导入闪退补充（2.56.1，Mac Catalyst）：
+
+- 若崩溃日志出现 `NSInvalidArgumentException` + `-[__NSArrayI allKeys]`，
+  表示客户端把数组按字典读取。
+- 已确认高风险触发点：`bookWorld.categories` 数组形态。
+- 兼容写法：`bookWorld` 使用分类字典（`bookWorld.{分类名}`），不要输出 `categories` 数组。
+
 强制验收：
 
 - 不改任何字段直接保存，不闪退
@@ -224,6 +231,30 @@ return {
 };
 ```
 
+## 3.0) WebView 执行键（2.56.1 专用）
+
+当站点必须依赖页面 JS 渲染或挑战页流程时，可在 `requestInfo` 返回对象中使用：
+
+- `webView`：`true/false`，是否切换到 WebView 请求路径
+- `webViewJs`：页面加载后注入执行的 JS 字符串
+- `webViewJsDelay`：注入前延迟（秒）
+- `webViewSkipUrls`：导航过滤规则（字符串或数组）
+- `webViewSkipUrlsUnless`：白名单覆盖规则（字符串或数组）
+
+导入前验收约束（固定）：
+
+- `simulate-live` 默认使用 `--engine auto`，由运行时自动决定 `http/webview`
+- WebView 书源必须在报告里看到：
+  - `steps.*.runtime_engine`
+  - `steps.*.webview_trace`
+- 若命中 `403/429/challenge`，按 `blocked` 处理，不归类为 parser 规则失败
+
+建议命令：
+
+```bash
+python tools/scripts/xbs_tool.py simulate-live -i <input.xbs|input.json> --engine auto --webview-timeout 25 --report <simulate_report.json>
+```
+
 ## 3.1) `result` 在不同阶段的含义（重要）
 
 - 在 `requestInfo` 阶段，`result` 通常是上一级传入的 URL 或 `nextPageUrl`
@@ -339,6 +370,7 @@ return result.replace(/作者：/g, "");
 ## 4.5) bookWorld 分类性能规范
 
 - 分类请求优先依赖 `pageIndex` 构造 URL，不默认依赖 `nextPageUrl` 连续翻页。
+- 2.56.1 导入兼容硬约束：`bookWorld` 使用命名分类 map（`bookWorld.{分类名}`），禁用 `bookWorld.categories` 数组。
 - `maxPage` 应与站点实际页数匹配，避免“超大页上限 + 自动翻页”导致超时。
 - 推荐在调试时先固定：
   - 单页抓取验证字段
@@ -532,6 +564,7 @@ return nextPageUrl(page + 1);
 导入稳定性（防闪退）：
 
 - 禁止把超长混淆 WAF JS 直接塞进 `requestInfo/content` 作为主链路。
+- 2.56.1 若出现 `-[__NSArrayI allKeys]`，先检查并移除 `bookWorld.categories` 数组形态。
 - 若链路依赖复杂反爬脚本且客户端不稳定，优先切换 API 或可复现的降级方案。
 
 加密正文验收（硬规则）：

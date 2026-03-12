@@ -2,6 +2,7 @@ import { parseFieldValue } from "./fieldParser.js";
 import { createDom, evaluateNodes } from "./xpath.js";
 import { buildRequest } from "./requestBuilder.js";
 import { performHttpRequest } from "../services/httpService.js";
+import { performWebViewRequest } from "../services/webviewService.js";
 import { getFixtureContent } from "../services/fixtureService.js";
 import { runUserJs } from "./jsSandbox.js";
 
@@ -19,8 +20,25 @@ const RESERVED_KEYS = new Set([
   "requestJavascript",
   "responseJavascript",
   "requestFunction",
-  "responseFunction"
+  "responseFunction",
+  "webView",
+  "webViewJs",
+  "webViewJsDelay",
+  "webViewSkipUrls",
+  "webViewSkipUrlsUnless",
+  "webViewContentRules",
+  "webViewSniff"
 ]);
+
+const WEBVIEW_KEYS = [
+  "webView",
+  "webViewJs",
+  "webViewJsDelay",
+  "webViewSkipUrls",
+  "webViewSkipUrlsUnless",
+  "webViewContentRules",
+  "webViewSniff"
+];
 
 function jsonPathGet(obj, pathExpr) {
   const clean = String(pathExpr || "").trim();
@@ -68,6 +86,32 @@ function actionFields(actionConfig) {
   return Object.keys(actionConfig).filter((key) => !RESERVED_KEYS.has(key));
 }
 
+function hasNonEmpty(value) {
+  if (value == null) return false;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return Number.isFinite(value) && value !== 0;
+  if (typeof value === "string") return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === "object") return Object.keys(value).length > 0;
+  return false;
+}
+
+function hasWebViewSignal(action, request) {
+  return WEBVIEW_KEYS.some((k) => hasNonEmpty(action?.[k]) || hasNonEmpty(request?.[k]));
+}
+
+function resolveRuntimeEngine(input, action, request) {
+  const preferred = String(input?.engine || "auto").toLowerCase();
+  if (preferred === "http" || preferred === "webview") {
+    return preferred;
+  }
+  return hasWebViewSignal(action, request) ? "webview" : "http";
+}
+
+function collectWebViewAppliedKeys(action, request) {
+  return WEBVIEW_KEYS.filter((k) => hasNonEmpty(action?.[k]) || hasNonEmpty(request?.[k]));
+}
+
 export async function executeStep(input) {
   const startedAt = Date.now();
   const sourceEntry = input.source[input.sourceKey];
@@ -94,6 +138,9 @@ export async function executeStep(input) {
   let fixtureUsed;
   let status = 200;
   let blockedReason = "";
+  let webviewTrace = [];
+  const runtimeEngine = resolveRuntimeEngine(input, action, request);
+  const webviewAppliedKeys = collectWebViewAppliedKeys(action, request);
 
   if (input.mode === "fixture") {
     const fixture = getFixtureContent(input.step, input.fixturesState);
@@ -109,13 +156,30 @@ export async function executeStep(input) {
     } else {
       body = fixture.content;
       fixtureUsed = fixture.used;
+      if (runtimeEngine === "webview") {
+        webviewTrace.push({
+          type: "fixture_replay",
+          message: "fixture mode replay, webview runtime skipped"
+        });
+      }
     }
   } else {
-    const httpResult = await performHttpRequest(request);
-    body = httpResult.body;
-    responseUrl = httpResult.responseUrl;
-    status = httpResult.status;
-    blockedReason = httpResult.blockedReason || "";
+    if (runtimeEngine === "webview") {
+      const webviewResult = await performWebViewRequest(request, {
+        webViewTimeoutMs: input.webViewTimeoutMs
+      });
+      body = webviewResult.body;
+      responseUrl = webviewResult.responseUrl;
+      status = webviewResult.status;
+      blockedReason = webviewResult.blockedReason || "";
+      webviewTrace = webviewResult.trace || [];
+    } else {
+      const httpResult = await performHttpRequest(request);
+      body = httpResult.body;
+      responseUrl = httpResult.responseUrl;
+      status = httpResult.status;
+      blockedReason = httpResult.blockedReason || "";
+    }
     if (status >= 400) {
       issues.push({
         step: input.step,
@@ -243,10 +307,13 @@ export async function executeStep(input) {
       request,
       responseUrl,
       mode: input.mode,
+      runtimeEngine,
       fixtureUsed,
       status,
       blocked: Boolean(blockedReason),
-      blockedReason
+      blockedReason,
+      webviewTrace,
+      webviewAppliedKeys
     },
     parseResult: {
       listLengthOnlyDebug,

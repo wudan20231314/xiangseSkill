@@ -87,8 +87,8 @@ $env:XBSREBUILD_BIN="D:\tools\xbsrebuild.exe"
 python tools/scripts/xbs_tool.py import-fix -i <input.xbs|input.json> -o <fixed.json> --to-xbs <fixed.xbs> --report <fix_report.json>
 python tools/scripts/check_xiangse_schema.py <input.json>
 python tools/scripts/xbs_tool.py check-editor -i <input.json>
-python tools/scripts/xbs_tool.py simulate-live -i <input.xbs|input.json> --keyword 都市 --book-index 0 --chapter-index 0 --report <simulate_report.json>
-python tools/scripts/xbs_tool.py simulate-fixture -i <input.xbs|input.json> --fixtures <fixtures_dir_or_map> --report <simulate_fixture_report.json>
+python tools/scripts/xbs_tool.py simulate-live -i <input.xbs|input.json> --engine auto --webview-timeout 25 --keyword 都市 --book-index 0 --chapter-index 0 --report <simulate_report.json>
+python tools/scripts/xbs_tool.py simulate-fixture -i <input.xbs|input.json> --engine auto --webview-timeout 25 --fixtures <fixtures_dir_or_map> --report <simulate_fixture_report.json>
 python tools/scripts/xbs_tool.py doctor
 python tools/scripts/xbs_tool.py json2xbs -i <input.json> -o <output.xbs>
 python tools/scripts/xbs_tool.py xbs2json -i <input.xbs> -o <output.json>
@@ -100,13 +100,15 @@ python tools/scripts/xbs_tool.py roundtrip -i <input.json> -p <output_prefix>
 - `xbs_tool.py` 在 `json2xbs/roundtrip` 会自动执行 schema 检查并在失败时中断。
 - `simulate-live` 会自动执行：`import-fix -> schema_check -> editor_check -> 四步真实请求模拟`。
   - 四步为：`searchBook / bookDetail / chapterList / chapterContent`。
+  - `--engine` 支持：`auto|http|webview`（默认 `auto`）。
+  - `--webview-timeout` 控制 WebView 执行超时（秒）。
   - 命中风控会给出 `blocked`（例如 `403/challenge`），与 parser 规则失败分开标记。
 - 仅在你明确要跳过时使用：`--skip-schema-check`。
 
 ## 真实模拟测试（导入前验收）
 
 ```bash
-python tools/scripts/xbs_tool.py simulate-live -i /abs/source.json --keyword 都市 --report /abs/source.sim.report.json
+python tools/scripts/xbs_tool.py simulate-live -i /abs/source.json --engine auto --webview-timeout 25 --keyword 都市 --report /abs/source.sim.report.json
 ```
 
 报告核心字段：
@@ -115,6 +117,9 @@ python tools/scripts/xbs_tool.py simulate-live -i /abs/source.json --keyword 都
 - `simulation_verdict`
 - `overall_verdict`
 - `steps.searchBook/bookDetail/chapterList/chapterContent`
+- `steps.*.runtime_engine`
+- `steps.*.webview_applied_keys`
+- `steps.*.webview_trace`
 
 判定规则：
 - `overall_verdict=pass`：结构、编辑兼容、四步模拟均通过，可进入导入阶段。
@@ -221,5 +226,6 @@ samples=（粘贴你的错误解析 JSON）
 
 - `docs/香色书源开发指南与工作流程.md`
 - `docs/XBS_JSON_CODING_RULES.md`
+- `docs/REVERSE_WEBVIEW_BASELINE_2561.md`
 - `docs/RETROSPECT_LOG.md`
 - `docs/TARE_USAGE_PLAYBOOK.md`

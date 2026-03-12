@@ -9,12 +9,14 @@ function defaultConfig(input = {}) {
     bookPickIndex: Number(input.bookPickIndex || 0),
     chapterPickIndex: Number(input.chapterPickIndex || 0),
     mode: input.mode || "live",
+    engine: input.engine || "auto",
     fixturesState: input.fixturesState || { mode: "none", data: {} },
-    minContentLength: Number(input.minContentLength || 50)
+    minContentLength: Number(input.minContentLength || 50),
+    webViewTimeoutSeconds: Number(input.webViewTimeoutSeconds || 25)
   };
 }
 
-function makeStepFailure(step, message, mode) {
+function makeStepFailure(step, message, mode, runtimeEngine = "") {
   return {
     step,
     success: false,
@@ -22,7 +24,8 @@ function makeStepFailure(step, message, mode) {
     blockedReason: "",
     requestDebug: {
       request: {},
-      mode
+      mode,
+      runtimeEngine
     },
     parseResult: {
       listLengthOnlyDebug: 0,
@@ -240,6 +243,8 @@ export async function runFullValidation(input) {
       source: input.source,
       sourceKey: input.sourceKey,
       mode: cfg.mode,
+      engine: cfg.engine,
+      webViewTimeoutMs: Math.max(1, cfg.webViewTimeoutSeconds) * 1000,
       queryPayload: {
         keyWord: cfg.keyword,
         pageIndex: cfg.pageIndex,
@@ -249,7 +254,7 @@ export async function runFullValidation(input) {
       fixturesState: cfg.fixturesState
     });
   } catch (error) {
-    searchStep = makeStepFailure("searchBook", error?.message || "Unknown searchBook error", cfg.mode);
+    searchStep = makeStepFailure("searchBook", error?.message || "Unknown searchBook error", cfg.mode, cfg.engine);
   }
   applySearchCriteria(searchStep);
 
@@ -262,6 +267,8 @@ export async function runFullValidation(input) {
       source: input.source,
       sourceKey: input.sourceKey,
       mode: cfg.mode,
+      engine: cfg.engine,
+      webViewTimeoutMs: Math.max(1, cfg.webViewTimeoutSeconds) * 1000,
       queryPayload: {
         queryInfo: book,
         result: pickDetailSeed(book)
@@ -269,7 +276,7 @@ export async function runFullValidation(input) {
       fixturesState: cfg.fixturesState
     });
   } catch (error) {
-    bookDetailStep = makeStepFailure("bookDetail", error?.message || "Unknown bookDetail error", cfg.mode);
+    bookDetailStep = makeStepFailure("bookDetail", error?.message || "Unknown bookDetail error", cfg.mode, cfg.engine);
   }
   applyBookDetailCriteria(bookDetailStep);
 
@@ -280,6 +287,8 @@ export async function runFullValidation(input) {
       source: input.source,
       sourceKey: input.sourceKey,
       mode: cfg.mode,
+      engine: cfg.engine,
+      webViewTimeoutMs: Math.max(1, cfg.webViewTimeoutSeconds) * 1000,
       queryPayload: {
         queryInfo: book,
         result: pickChapterListSeed(bookDetailStep, book),
@@ -288,7 +297,7 @@ export async function runFullValidation(input) {
       fixturesState: cfg.fixturesState
     });
   } catch (error) {
-    chapterListStep = makeStepFailure("chapterList", error?.message || "Unknown chapterList error", cfg.mode);
+    chapterListStep = makeStepFailure("chapterList", error?.message || "Unknown chapterList error", cfg.mode, cfg.engine);
   }
   applyChapterListCriteria(chapterListStep, sourceUrl);
 
@@ -301,6 +310,8 @@ export async function runFullValidation(input) {
       source: input.source,
       sourceKey: input.sourceKey,
       mode: cfg.mode,
+      engine: cfg.engine,
+      webViewTimeoutMs: Math.max(1, cfg.webViewTimeoutSeconds) * 1000,
       queryPayload: {
         queryInfo: chapter,
         result: pickContentSeed(chapter)
@@ -308,7 +319,7 @@ export async function runFullValidation(input) {
       fixturesState: cfg.fixturesState
     });
   } catch (error) {
-    chapterContentStep = makeStepFailure("chapterContent", error?.message || "Unknown chapterContent error", cfg.mode);
+    chapterContentStep = makeStepFailure("chapterContent", error?.message || "Unknown chapterContent error", cfg.mode, cfg.engine);
   }
   applyChapterContentCriteria(chapterContentStep, cfg.minContentLength || 50);
 
@@ -322,7 +333,9 @@ export async function runFullValidation(input) {
     meta: {
       sourceName: String(sourceEntry.sourceName || input.sourceKey),
       sourceUrl: String(sourceEntry.sourceUrl || ""),
-      sourceType: String(sourceEntry.sourceType || "text")
+      sourceType: String(sourceEntry.sourceType || "text"),
+      engine: cfg.engine,
+      webViewTimeoutSeconds: cfg.webViewTimeoutSeconds
     },
     steps: {
       searchBook: searchStep,

@@ -313,6 +313,7 @@ def _summarize_step(step_name: str, step_data: dict[str, Any]) -> dict[str, Any]
     return {
         "step": step_name,
         "status": status,
+        "runtime_engine": request_debug.get("runtimeEngine", ""),
         "blocked": bool(step_data.get("blocked")),
         "blocked_reason": step_data.get("blockedReason", "") or request_debug.get("blockedReason", ""),
         "elapsed_ms": step_data.get("elapsedMs", 0),
@@ -333,6 +334,8 @@ def _summarize_step(step_name: str, step_data: dict[str, Any]) -> dict[str, Any]
             "sample_item_keys": sorted(sample_item.keys()),
             "sample_item": sample_item,
         },
+        "webview_applied_keys": request_debug.get("webviewAppliedKeys", []),
+        "webview_trace": request_debug.get("webviewTrace", []),
         "errors": errors,
         "warnings": warnings,
     }
@@ -342,6 +345,8 @@ def _run_validator_cli(
     *,
     input_json: Path,
     mode: str,
+    engine: str,
+    webview_timeout: int,
     keyword: str,
     page_index: int,
     offset: int,
@@ -363,6 +368,10 @@ def _run_validator_cli(
         str(input_json),
         "--mode",
         mode,
+        "--engine",
+        engine,
+        "--webview-timeout",
+        str(webview_timeout),
         "--keyword",
         keyword,
         "--page-index",
@@ -414,6 +423,8 @@ def _build_simulation_result(
     *,
     input_path: Path,
     mode: str,
+    engine: str,
+    webview_timeout: int,
     prep: dict[str, Any],
     schema_result: dict[str, Any],
     editor_result: dict[str, Any],
@@ -469,6 +480,8 @@ def _build_simulation_result(
     return {
         "input": str(input_path),
         "mode": mode,
+        "engine": engine,
+        "webview_timeout_seconds": webview_timeout,
         "normalization": {
             "input_type": prep.get("input_type", ""),
             "decoded_json": prep.get("decoded_json", ""),
@@ -515,6 +528,7 @@ def _print_simulation_summary(result: dict[str, Any]) -> None:
             continue
         print(
             f"- {step}: status={step_obj.get('status')} "
+            f"engine={step_obj.get('runtime_engine')} "
             f"http={step_obj.get('response', {}).get('status')} "
             f"list_len={step_obj.get('parse', {}).get('list_length')}"
         )
@@ -527,6 +541,12 @@ def _run_simulate(args: argparse.Namespace, *, mode: str) -> None:
 
     report_path = Path(args.report).resolve() if args.report else None
     fixtures = str(args.fixtures or "").strip() if mode == "fixture" else ""
+    engine = str(args.engine or "auto").strip().lower()
+    if engine not in {"auto", "http", "webview"}:
+        raise ValueError(f"invalid --engine: {engine}")
+    webview_timeout = int(args.webview_timeout)
+    if webview_timeout <= 0:
+        raise ValueError("--webview-timeout must be > 0")
 
     with tempfile.TemporaryDirectory(prefix="xbs_sim_") as td:
         temp_dir = Path(td)
@@ -554,6 +574,8 @@ def _run_simulate(args: argparse.Namespace, *, mode: str) -> None:
                 validator_payload = _run_validator_cli(
                     input_json=fixed_json,
                     mode=mode,
+                    engine=engine,
+                    webview_timeout=webview_timeout,
                     keyword=str(args.keyword),
                     page_index=int(args.page_index),
                     offset=int(args.offset),
@@ -572,6 +594,8 @@ def _run_simulate(args: argparse.Namespace, *, mode: str) -> None:
         result = _build_simulation_result(
             input_path=input_path,
             mode=mode,
+            engine=engine,
+            webview_timeout=webview_timeout,
             prep=prep,
             schema_result=schema_result,
             editor_result=editor_result,
@@ -1142,6 +1166,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p10.add_argument("-i", "--input", required=True, help="Input .xbs or .json")
     p10.add_argument(
+        "--engine",
+        default="auto",
+        choices=["auto", "http", "webview"],
+        help="simulation engine (default: auto)",
+    )
+    p10.add_argument(
+        "--webview-timeout",
+        type=int,
+        default=25,
+        help="webview timeout seconds for --engine webview/auto (default: 25)",
+    )
+    p10.add_argument(
         "--keyword",
         default="都市",
         help="search keyword for searchBook step (default: 都市)",
@@ -1211,6 +1247,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--fixtures",
         required=True,
         help="fixture directory/file/map-json-string passed to validator",
+    )
+    p11.add_argument(
+        "--engine",
+        default="auto",
+        choices=["auto", "http", "webview"],
+        help="simulation engine (default: auto)",
+    )
+    p11.add_argument(
+        "--webview-timeout",
+        type=int,
+        default=25,
+        help="webview timeout seconds for --engine webview/auto (default: 25)",
     )
     p11.add_argument(
         "--keyword",

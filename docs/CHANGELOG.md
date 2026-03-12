@@ -1,6 +1,27 @@
 # Changelog
 
 ## 2026-03-12
+- WebView 模拟增强（静态逆向驱动）：
+  - `tools/validator` 新增 WebView 执行层：
+    - 新增 `services/webviewService.js`
+    - 支持 `webView/webViewJs/webViewJsDelay/webViewSkipUrls/webViewSkipUrlsUnless`
+    - `engine=auto` 命中 WebView 键自动切换执行引擎
+  - `xbs_tool.py simulate-live/simulate-fixture` 新增参数：
+    - `--engine auto|http|webview`
+    - `--webview-timeout <seconds>`
+  - 模拟报告新增 WebView 机读字段：
+    - `steps.*.runtime_engine`
+    - `steps.*.webview_applied_keys`
+    - `steps.*.webview_trace`
+  - 保持 blocked 归因独立：
+    - `403/429/challenge` 继续输出 `blocked`，不与 parser fail 混淆
+- 新增静态逆向基线文档：
+  - `docs/REVERSE_WEBVIEW_BASELINE_2561.md`
+  - 固化字段证据矩阵与“逆向结论 -> 模拟器规则”映射
+- 流程/文档/skill 同步：
+  - `README`、`MAINTENANCE_WORKFLOW`、`TARE_USAGE_PLAYBOOK`
+  - `skills/global/xbs-booksource-workflow.SKILL.md`
+  - `skills/local/xiangse-booksource.SKILL.md`
 - 新增“真实模拟测试”能力（导入前自动验收闭环）：
   - 新增 `tools/validator` Node 引擎（CLI 模式）：
     - 保留核心能力：`requestBuilder/stepExecutor/validationService/httpService/jsSandbox`

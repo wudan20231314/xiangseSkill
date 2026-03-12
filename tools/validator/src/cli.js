@@ -78,7 +78,7 @@ function toInt(value, fallback) {
 }
 
 function usage() {
-  return `xiangse-validator CLI\n\nUsage:\n  node src/cli.js run --input <source.json> [--source-key <name>] [--mode live|fixture] [--keyword 都市] [--page-index 1] [--offset 0] [--book-index 0] [--chapter-index 0] [--min-content-length 50] [--fixtures <dir|json|map-json-string>] [--output <report.json>]\n`;
+  return `xiangse-validator CLI\n\nUsage:\n  node src/cli.js run --input <source.json> [--source-key <name>] [--mode live|fixture] [--engine auto|http|webview] [--webview-timeout 25] [--keyword 都市] [--page-index 1] [--offset 0] [--book-index 0] [--chapter-index 0] [--min-content-length 50] [--fixtures <dir|json|map-json-string>] [--output <report.json>]\n`;
 }
 
 async function main() {
@@ -112,6 +112,10 @@ async function main() {
   if (mode !== "live" && mode !== "fixture") {
     throw new Error(`invalid mode: ${mode}`);
   }
+  const engine = String(args.engine || "auto").toLowerCase();
+  if (!["auto", "http", "webview"].includes(engine)) {
+    throw new Error(`invalid engine: ${engine}`);
+  }
 
   const fixturesState = normalizeFixturesInput(args.fixtures ? String(args.fixtures) : "");
 
@@ -125,8 +129,10 @@ async function main() {
       bookPickIndex: toInt(args["book-index"], 0),
       chapterPickIndex: toInt(args["chapter-index"], 0),
       mode,
+      engine,
       fixturesState,
-      minContentLength: toInt(args["min-content-length"], 50)
+      minContentLength: toInt(args["min-content-length"], 50),
+      webViewTimeoutSeconds: toInt(args["webview-timeout"], 25)
     }
   });
 
@@ -135,6 +141,7 @@ async function main() {
     input: inputPath,
     sourceKey,
     mode,
+    engine,
     report: result.report
   };
 

@@ -281,14 +281,15 @@ Preferred (cross-platform, including Windows/Termux):
 - `python tools/scripts/xbs_tool.py roundtrip -i <input.json> -p <output_prefix>`
 - `python tools/scripts/xbs_tool.py import-fix -i <input.xbs|input.json> -o <fixed.json> [--to-xbs <fixed.xbs>] [--report <fix_report.json>]`
 - `python tools/scripts/xbs_tool.py check-editor -i <input.json>`
-- `python tools/scripts/xbs_tool.py simulate-live -i <input.xbs|input.json> --keyword 都市 --book-index 0 --chapter-index 0 --report <simulate_report.json>`
-- `python tools/scripts/xbs_tool.py simulate-fixture -i <input.xbs|input.json> --fixtures <fixtures_dir_or_map> --report <simulate_fixture_report.json>`
+- `python tools/scripts/xbs_tool.py simulate-live -i <input.xbs|input.json> --engine auto --webview-timeout 25 --keyword 都市 --book-index 0 --chapter-index 0 --report <simulate_report.json>`
+- `python tools/scripts/xbs_tool.py simulate-fixture -i <input.xbs|input.json> --engine auto --webview-timeout 25 --fixtures <fixtures_dir_or_map> --report <simulate_fixture_report.json>`
 - `python tools/scripts/xbs_tool.py profile -i <input.json> -o <editor_safe.json> --profile editor_safe`
 - `python tools/scripts/xbs_tool.py build-ab -i <input.json> -d <out_dir> --prefix <name> --to-xbs`
 - `python tools/scripts/xbs_tool.py normalize-2561 -i <json_or_dir> --rebuild-xbs --report <report.json>`
 - Note: `json2xbs/roundtrip` auto-run schema guard; conversion aborts on schema mismatch.
 - `simulate-live/simulate-fixture` auto-run `import-fix -> schema_check -> editor_check -> 4-step simulation`:
   - steps: `searchBook/bookDetail/chapterList/chapterContent`
+  - engine: `auto|http|webview`（默认 `auto`）
   - pass gate: four steps all pass
   - anti-bot (`403/429/challenge`) returns `blocked` (not parser fail)
 - If absolutely needed, bypass with `--skip-schema-check` (not recommended for delivery artifacts).
@@ -322,6 +323,8 @@ When delivering results, always provide:
 - absolute path to XBS
 - SHA256 of XBS
 - simulate report path and verdict (`pass/fail/blocked`)
+- runtime engine evidence (`steps.*.runtime_engine`)
+- for WebView sources: include `steps.*.webview_trace` summary (navigation/injection/filter/failure)
 - 保存回归结论（不改保存 / 改名保存 / 改字段保存）
 - brief debug note if any compatibility workaround was applied
 - schema check result (`PASS/FAIL`) and command used.

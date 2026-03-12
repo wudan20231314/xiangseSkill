@@ -62,8 +62,11 @@
    - `python tools/scripts/xbs_tool.py normalize-2561 -i <json_or_dir> --rebuild-xbs --report <report.json>`
 18. `editor_safe` 仅做字段降级，不改变香色顶层结构（仍保持 `{alias:{sourceName...}}`）。
 19. 交付前必须跑真实模拟四步链路（不导入 App）：
-   - `python tools/scripts/xbs_tool.py simulate-live -i <input.xbs|input.json> --keyword 都市 --book-index 0 --chapter-index 0 --report <simulate_report.json>`
+   - `python tools/scripts/xbs_tool.py simulate-live -i <input.xbs|input.json> --engine auto --webview-timeout 25 --keyword 都市 --book-index 0 --chapter-index 0 --report <simulate_report.json>`
    - `simulation_verdict` 必须为 `pass`；若是 `blocked`，按风控阻断处理，不得误判为 parser 成功。
+   - 若源使用 `webView/webViewJs/webViewJsDelay/webViewSkipUrls`，报告中必须出现：
+     - `steps.*.runtime_engine`
+     - `steps.*.webview_trace`（至少给摘要）
 
 ## 推荐模板
 ```json
@@ -93,6 +96,7 @@
 - 模拟测试稳定性（导入前）：
   - `simulate-live` 四步均 pass
   - 若 blocked，备注中必须写明阻断原因（如 `403/challenge`）
+  - WebView 源需附 `runtime_engine + webview_trace` 摘要
 - 章节列表返回包含 `title + url + detailUrl`
 - 若章节返回加密正文（如 `encrypt=1`），必须给出“解密成功且正文非空”的验证结论
 - 分类功能不可缺失：`bookWorld` 与 `requestFilters` 两者都应提供；若站点限制无法提供，需在 `delivery_notes` 说明原因与降级策略
